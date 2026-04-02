@@ -52,19 +52,19 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'jobdb',
         'USER': 'root',
-        'PASSWORD': 'nguyenvancong',
+        'PASSWORD': 'Abcd123',
         'HOST': 'localhost',
         'PORT': '3306',
     }
 }
 
 import pymysql
-pymysql.version_info = (1, 1, 2, 'final', 0)
+pymysql.version_info = (2, 2, 1, "final", 0)
 pymysql.install_as_MySQLdb()
 
 import cloudinary.api
 cloudinary.config(
-  	cloud_name = "NguyenCong",
+  	cloud_name = "dxek6c0tg",
   	api_key = "734692924117844",
   	api_secret = "n6dofJ_qhNEGwXvw5GnlrbpnbWk"
 )
@@ -100,13 +100,6 @@ WSGI_APPLICATION = "PartTimeJobApi.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
-}
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
