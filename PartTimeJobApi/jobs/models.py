@@ -90,6 +90,13 @@ class Requirement(BaseModel):
     def __str__(self):
         return self.subject
 
+class Benefit(BaseModel):
+    subject  = models.CharField(max_length=255)
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='benefits', null=True)
+
+    def __str__(self):
+        return self.subject
+
 class CV(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     file = models.FileField(upload_to='cvs/')
@@ -120,6 +127,9 @@ class Review(BaseModel):
     rating = models.IntegerField()
     comment = models.TextField()
 
+    def __str__(self):
+        return self.comment
+
 
 class Notification(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -131,3 +141,6 @@ class Message(BaseModel):
     sender = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='sent_messages')
     receiver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='received_messages')
     content = models.TextField()
+
+    def __str__(self):
+        return self.content
