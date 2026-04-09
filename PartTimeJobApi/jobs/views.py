@@ -1,7 +1,7 @@
 from rest_framework import viewsets, generics, filters, status, parsers,permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from jobs.models import JobCategory, Job, Company, Follow
+from jobs.models import JobCategory, Job, Company, Follow, CV
 from jobs import serializers, perms
 
 
@@ -30,7 +30,7 @@ class JobViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCreate
 
         return Response(serializers.JobDetailsSerializer(job).data, status=status.HTTP_201_CREATED)
 
-class CompanyViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCreateAPIView):
+class CompanyViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListAPIView):
     queryset = Company.objects.all()
     serializer_class = serializers.CompanySerializer
 
@@ -67,3 +67,28 @@ class CompanyViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCr
 
         return Response({"message": f"Đã theo dõi {company.name}"},
                         status=status.HTTP_201_CREATED)
+
+class CVViewSet(viewsets.ViewSet, generics.ListAPIView):
+    queryset = CV.objects.filter(is_active=True)
+    serializer_class = serializers.CVSerializer
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+
+    def get_permissions(self):
+        return [permissions.IsAuthenticated()]
+
+    def get_queryset(self):
+        if self.request.user.is_authenticated:
+            return self.queryset.filter(user=self.request.user).order_by('-created_at')
+        return self.queryset.none()
+
+    def create(self, request):
+        if request.user.role != 'CANDIDATE':
+            return Response(
+                {"detail": "Chỉ tài khoản Ứng viên mới có thể tạo CV."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        cv = serializer.save(user=request.user)
+
+        return Response(self.serializer_class(cv).data, status=status.HTTP_201_CREATED)
