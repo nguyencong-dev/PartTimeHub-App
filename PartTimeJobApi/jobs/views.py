@@ -1,3 +1,8 @@
-from django.shortcuts import render
+from rest_framework import viewsets, generics
+from jobs import serializers
+from jobs.models import JobCategory, Company
 
-# Create your views here.
+
+class CompanyViewSet(viewsets.ViewSet, generics.ListAPIView):
+    queryset = Company.objects.all()
+    serializer_class = serializers.CompanySerializer
