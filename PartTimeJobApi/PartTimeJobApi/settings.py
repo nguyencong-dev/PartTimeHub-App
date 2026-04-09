@@ -40,8 +40,15 @@ INSTALLED_APPS = [
     'ckeditor',
     'ckeditor_uploader',
     'rest_framework',
-    'drf_yasg'
+    'drf_yasg',
+    'oauth2_provider',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
+    )
+}
 
 AUTH_USER_MODEL = 'jobs.User'
 
@@ -59,14 +66,16 @@ DATABASES = {
 }
 
 import pymysql
+
 pymysql.version_info = (2, 2, 1, "final", 0)
 pymysql.install_as_MySQLdb()
 
 import cloudinary.api
+
 cloudinary.config(
-  	cloud_name = "dxek6c0tg",
-  	api_key = "734692924117844",
-  	api_secret = "n6dofJ_qhNEGwXvw5GnlrbpnbWk"
+    cloud_name="dxek6c0tg",
+    api_key="734692924117844",
+    api_secret="n6dofJ_qhNEGwXvw5GnlrbpnbWk"
 )
 
 MIDDLEWARE = [
@@ -135,3 +144,6 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CLIENT_ID ='IWEb5l8EO7NTG4JgDMKMLzg79DLPzL2RJPXJ48gp'
+CLIENT_SECRET = 'ETBpfYVg48W2tr1KBDcLMTEr7aJu7t5f7EtR7juiDwCyou1tCLtMGYadZxNVuKlKhnz3hAoZYZA7gV9XtafSimkxVatpre79poiqsc7mEL0AcSDpm1VsvkUdX1iurivE'
