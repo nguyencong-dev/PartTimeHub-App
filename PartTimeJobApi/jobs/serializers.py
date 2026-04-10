@@ -34,7 +34,7 @@ class JobSerializer(serializers.ModelSerializer):
     class Meta:
         model = Job
         fields = ['id', 'title', 'description', 'salary', 'working_time', 'location', 'category','company']
-
+        read_only_fields = ['company']
 class JobDetailsSerializer(serializers.ModelSerializer):
     requirements = RequirementSerializer(many=True, read_only=True)
     benefits = BenefitSerializer(many=True,read_only=True)
