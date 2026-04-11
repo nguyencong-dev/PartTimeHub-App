@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from jobs.models import JobCategory, Job, Requirement, Benefit, Company, Application
+from jobs.models import JobCategory, Job, Requirement, Benefit, Company, CV, Application
 
 
 class JobCategorySerializer(serializers.ModelSerializer):
@@ -42,12 +42,15 @@ class JobDetailsSerializer(serializers.ModelSerializer):
         model = JobSerializer.Meta.model
         fields = JobSerializer.Meta.fields + ['requirements', 'benefits']
 
+class CVSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CV
+        fields = ['id', 'file', 'description', 'created_at']
+        read_only_fields = ['user']
+
 class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
-        fields = '__all__'
-        read_only_fields = ['user', 'status']
-        extra_kwargs = {
-            'user': {'read_only': True},
-            'status': {'read_only': True}
-        }
+        fields = ['id', 'job', 'user', 'cv', 'status', 'created_at']
+        read_only_fields = ['user']
+

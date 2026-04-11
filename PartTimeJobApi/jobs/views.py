@@ -1,8 +1,9 @@
 from rest_framework import viewsets, generics, filters, status, parsers,permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from jobs.models import JobCategory, Job, Requirement, Benefit, Application, CV
+from jobs.models import JobCategory, Job, Requirement, Benefit, Company, Follow, CV, Application
 from jobs import serializers, perms
+from jobs.serializers import ApplicationSerializer
 
 
 class JobCategoryViewSet(viewsets.ViewSet, generics.ListAPIView):
@@ -85,29 +86,99 @@ class JobViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCreate
             s.save()
             return Response(s.data, status=status.HTTP_200_OK)
 
-    @action(methods=['post'], url_path='apply', detail=True)
-    def apply(self, request, pk):
+class CompanyViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListAPIView):
+    queryset = Company.objects.all()
+    serializer_class = serializers.CompanySerializer
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        if self.action == 'verification':
+            return [perms.IsEmployer()]
+        if self.action == 'follow':
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
+    @action(detail=False, methods=['post'], url_path='verification')
+    def verification(self, request):
+        company = Company.objects.filter(user=request.user).first()
+
+        if not company:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        company.is_verified = True
+        company.save()
+        return Response(status=status.HTTP_200_OK)
+    @action(detail=True, methods=['post'], url_path='follow')
+    def follow(self, request, pk=None):
         if request.user.role != 'CANDIDATE':
-            return Response({"detail":"Chỉ ứng viên mới có thể ứng tuyển."}, status=status.HTTP_403_FORBIDDEN)
-        job = self.get_object()
-        cv_id = request.data.get('cv_id')
+            return Response({"detail": "Chỉ ứng viên mới có thể theo dõi công ty."},status=status.HTTP_403_FORBIDDEN)
 
-        cv = CV.objects.filter(id=cv_id, user=request.user).first()
-        if not cv:
-            return Response({"detail":"CV không hợp lệ hoặc không thuộc về bạn."}, status=status.HTTP_400_BAD_REQUEST)
+        company = self.get_object()
 
-        app, created = Application.objects.get_or_create(job=job, user=request.user, defaults={'cv': cv, 'status': 'PENDING'})
+        follow_obj, created = Follow.objects.get_or_create(user=request.user, company=company)
 
         if not created:
-            return Response({"detail": "Bạn đã nộp đơn cho công việc này rồi."}, status=status.HTTP_400_BAD_REQUEST)
+            follow_obj.delete()
+            return Response({"message": f"Đã bỏ theo dõi {company.name}"},status=status.HTTP_200_OK)
 
-        s = serializers.ApplicationSerializer(app)
-        return Response(s.data, status=status.HTTP_201_CREATED)
+        return Response({"message": f"Đã theo dõi {company.name}"},
+                        status=status.HTTP_201_CREATED)
 
-class ApplicationViewSet(viewsets.ModelViewSet, generics.ListAPIView):
+class CVViewSet(viewsets.ViewSet, generics.ListAPIView):
+    queryset = CV.objects.filter(is_active=True)
+    serializer_class = serializers.CVSerializer
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+
+    def get_permissions(self):
+        return [permissions.IsAuthenticated()]
+
+    def get_queryset(self):
+        if self.request.user.is_authenticated:
+            return self.queryset.filter(user=self.request.user).order_by('-created_at')
+        return self.queryset.none()
+
+    def create(self, request):
+        if request.user.role != 'CANDIDATE':
+            return Response(
+                {"detail": "Chỉ tài khoản Ứng viên mới có thể tạo CV."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        cv = serializer.save(user=request.user)
+
+        return Response(self.serializer_class(cv).data, status=status.HTTP_201_CREATED)
+
+class ApplicationViewSet(viewsets.ModelViewSet):
     queryset = Application.objects.all()
-    serializer_class = serializers.ApplicationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ApplicationSerializer
+
+    def get_permissions(self):
+        return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
         user = self.request.user
+
+        if not user.is_authenticated:
+            return self.queryset.none()
+
+        if user.role == 'CANDIDATE':
+            return self.queryset.filter(user=user).order_by('-created_at')
+
+        return self.queryset.filter(job__company__user=user).select_related('job', 'cv', 'user')
+
+
+    @action(detail=True, methods=['patch'], url_path='status')
+    def status(self, request, pk=None):
+        instance = self.get_object()
+
+        if instance.job.company.user != request.user:
+            return Response({
+                "detail":"Bạn không có quyền cập nhật trạng thái cho đơn này!"
+            }, status=status.HTTP_403_FORBIDDEN)
+        serializer = self.get_serializer(instance)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
