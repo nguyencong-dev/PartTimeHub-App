@@ -11,3 +11,7 @@ class IsOwnerEmployer(BasePermission):
             request.user.role == User.Role.EMPLOYER and
             obj.company.user == request.user
         )
+
+class IsCandidate(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == User.Role.CANDIDATE
