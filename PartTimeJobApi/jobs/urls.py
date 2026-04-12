@@ -7,7 +7,8 @@ router.register(r'jobs', views.JobViewSet, basename='job')
 router.register(r'companies', views.CompanyViewSet, basename='company')
 router.register(r'cvs', views.CVViewSet, basename='cv')
 router.register(r'applications', views.ApplicationViewSet, basename='application')
-
+router.register(r'messages', views.MessageViewSet, basename='message')
+router.register(r'notifications', views.NotificationViewSet, basename='notification')
 
 urlpatterns = [
     path('', include(router.urls))
