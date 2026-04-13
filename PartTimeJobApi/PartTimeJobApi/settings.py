@@ -50,6 +50,9 @@ REST_FRAMEWORK = {
     )
 }
 
+OAUTH2_PROVIDER = {
+    'ACCESS_TOKEN_EXPIRE_SECONDS': 31536000
+}
 AUTH_USER_MODEL = 'jobs.User'
 
 CKEDITOR_UPLOAD_PATH = "images/ckeditors/"
