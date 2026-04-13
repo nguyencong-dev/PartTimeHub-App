@@ -1,7 +1,8 @@
 from rest_framework import viewsets, generics, filters, status, parsers, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from jobs.models import JobCategory, Job, Requirement, Benefit, Company, Follow, CV, Application, Message, Notification
+from jobs.models import JobCategory, Job, Requirement, Benefit, Company, Follow, CV, Application, Message, Notification, \
+    Review
 from jobs import serializers, perms
 from jobs.perms import IsEmployer
 from jobs.serializers import ApplicationSerializer
@@ -247,3 +248,31 @@ class NotificationViewSet(viewsets.ViewSet, generics.ListAPIView):
 
         serializer = self.serializer_class(notification)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class ReviewViewSet(viewsets.ViewSet, generics.ListAPIView):
+    queryset = Review.objects.all()
+    serializer_class = serializers.ReviewSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        user = request.user
+
+        if user.role != 'CANDIDATE':
+            return Response(
+                {
+                   "detail" : "Chỉ tài khoản ứng viên mới có quyền review!"
+                }, status=status.HTTP_403_FORBIDDEN
+            )
+        target_company = request.data.get('target_company')
+
+        if Review.objects.filter(reviewer=user, target_company=target_company).exists():
+            return Response(
+                {
+                    "detail": "Bạn đã đánh giá cho công ty này rồi!"
+                }, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(reviewer=user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
