@@ -16,11 +16,17 @@ class JobCategoryViewSet(viewsets.ViewSet, generics.ListAPIView):
 class JobViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCreateAPIView, generics.DestroyAPIView):
     queryset = Job.objects.filter(is_active=True)
 
-    def get_permissions(self):
-        if self.request.method.__eq__("POST"):
-            return [perms.IsEmployer()]
-        elif self.request.method.__eq__('PATCH') or self.request.method.__eq__('DELETE'):
+        def get_permissions(self):
+        if self.action in ['requirements', 'benefits']:
+            if self.request.method.__eq__("POST") or self.request.method.__eq__('PATCH') or self.request.method.__eq__(
+                    'DELETE'):
+                return [perms.IsOwnerEmployer()]
+        elif self.action in ['destroy', 'job_applications']:
             return [perms.IsOwnerEmployer()]
+        elif self.action == 'create':
+            return [perms.IsEmployer()]
+        elif self.action in ['apply_job']:
+            return [perms.IsCandidate()]
         return [permissions.AllowAny()]
 
     def get_serializer_class(self):
@@ -89,7 +95,52 @@ class JobViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCreate
             s.save()
             return Response(s.data, status=status.HTTP_200_OK)
 
+    
+     @action(methods=['post'], detail=True, url_path='apply', parser_classes=[parsers.MultiPartParser])
+    def apply_job(self, request, pk):
+        job = self.get_object()
+        user = request.user
 
+        file = request.FILES.get('cv_file')
+        cv_id = request.data.get('cv_id')
+
+        if not file and not cv_id:
+            return Response("Vui lòng đính kèm file CV mới  hoặc chọn CV có sẵn.",
+                            status=status.HTTP_400_BAD_REQUEST)
+        cv = None
+        if cv_id:
+            try:
+                cv = CV.objects.get(id=cv_id, user=user, is_active=True)
+            except CV.DoesNotExist:
+                return Response("CV không tồn tại hoặc không thuộc quyền sở hữu của bạn.",
+                                status=status.HTTP_404_NOT_FOUND)
+
+        elif file:
+            desc = request.data.get('description', f'CV ứng tuyển {job.title}')
+            cv = CV.objects.create(user=user, file=file, description=desc)
+
+        apply = Application.objects.filter(job=job, user=user).first()
+
+        if apply:
+            apply.cv = cv
+            apply.status = Application.Status.PENDING
+            apply.save()
+            return Response(serializers.ApplicationSerializer(apply).data, status=status.HTTP_200_OK)
+
+        s = serializers.ApplicationSerializer(data={'job': job.id, 'cv': cv.id})
+        s.is_valid(raise_exception=True)
+        apply = s.save(user=user)
+
+        return Response(serializers.ApplicationSerializer(apply).data, status=status.HTTP_201_CREATED)
+
+    @action(methods=['get'], detail=True, url_path='applications')
+    def job_applications(self, request, pk):
+        job = self.get_object()
+        applications = Application.objects.filter(job=job)
+        s = serializers.ApplicationSerializer(applications, many=True)
+        return Response(s.data, status=status.HTTP_200_OK)
+    
+    
 class CompanyViewSet(viewsets.ViewSet,
                      generics.ListAPIView,
                      generics.RetrieveAPIView):
@@ -127,7 +178,12 @@ class CompanyViewSet(viewsets.ViewSet,
 
         company.is_pending_verification = True
         company.save()
-        return Response({"detail": "Gửi yêu cầu thành công!"})
+        return Response(status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='follow')
+    def follow(self, request, pk=None):
+        if request.user.role != 'CANDIDATE':
+            return Response({"detail": "Chỉ ứng viên mới có thể theo dõi công ty."}, status=status.HTTP_403_FORBIDDEN)
 
     @action(methods=['post'], detail=True, url_path='follow')
     def follow(self, request, pk=None):
@@ -144,6 +200,7 @@ class CompanyViewSet(viewsets.ViewSet,
             follow_obj.delete()
             return Response({"detail": "Đã bỏ theo dõi công ty."}, status=status.HTTP_200_OK)
         return Response({"detail": "Đã theo dõi công ty thành công!"}, status=status.HTTP_201_CREATED)
+
 
 
 class CVViewSet(viewsets.ViewSet, generics.ListAPIView):

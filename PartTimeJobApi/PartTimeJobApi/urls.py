@@ -18,6 +18,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, re_path, include
 from jobs.admin import admin_site
+from django.conf import settings
+from django.conf.urls.static import static
 
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
@@ -51,3 +53,6 @@ urlpatterns = [
     path('o/', include('oauth2_provider.urls',
                        namespace='oauth2_provider')),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT + "/")

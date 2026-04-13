@@ -15,7 +15,7 @@ from django.conf.global_settings import AUTH_USER_MODEL
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-MEDIA_ROOT = '%s/courses/static/' % BASE_DIR
+MEDIA_ROOT = '%s/jobs/static/' % BASE_DIR
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
@@ -148,5 +148,5 @@ USE_TZ = True
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CLIENT_ID ='hKc2Torc2Ja57g1GPpoHptLUOcnOWNezuoFXGOKM'
-CLIENT_SECRET = '12i512hi009@12h5io125^7,/'
+CLIENT_ID ='MIXHHFY0XWxLXwKabedSfS1fEoCVfyTDlVhOLQjN'
+CLIENT_SECRET = '6hlgkucD2Ohj4F4282OSNP7ZfeM8pAfvP5Md30OjDKE8VsBkTi5a70I2W1flYIx6CLvCfcOL5pW5BMTng8tqDVLOJGFeaSs4tyXvOVcOJKkhLVc7da6xMh4IfFnqgVZ3'
