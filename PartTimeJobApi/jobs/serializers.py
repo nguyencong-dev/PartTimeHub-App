@@ -20,14 +20,14 @@ class BenefitSerializer(serializers.ModelSerializer):
 class ItemSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        if instance.image:
-            data['image'] = instance.image.url
+        if instance.avatar:
+            data['avatar'] = instance.avatar.url
         return data
 
-class CompanySerializer(serializers.ModelSerializer):
+class CompanySerializer(ItemSerializer):
     class Meta:
         model = Company
-        fields = ['id', 'name', 'address']
+        fields = ['id', 'name', 'address', 'avatar']
 
 
 class JobSerializer(serializers.ModelSerializer):
@@ -54,12 +54,12 @@ class ApplicationSerializer(serializers.ModelSerializer):
         fields = ['id', 'job', 'user', 'cv', 'status', 'created_at']
         read_only_fields = ['user']
 
-class CompanyDetailSerializer(serializers.ModelSerializer):
+class CompanyDetailSerializer(ItemSerializer):
     jobs = JobSerializer(many=True, read_only=True, source='job_set')
 
     class Meta:
         model = Company
-        fields = ['id', 'name', 'address', 'description', 'jobs']
+        fields = ['id', 'name', 'address', 'description', 'jobs', 'avatar']
 
 class MessageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -71,7 +71,6 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = '__all__'
-        read_only_fields = ['user']
 
 class ReviewSerializer(serializers.ModelSerializer):
     reviewer_name = serializers.CharField(source='reviewer.username', read_only=True)

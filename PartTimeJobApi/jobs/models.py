@@ -23,7 +23,7 @@ class User(AbstractUser):
         ACTIVE = 'ACTIVE',
         BLOCKED = 'BLOCKED',
 
-    avatar = CloudinaryField(null=True)
+    avatar = CloudinaryField(null=False, default='image/upload/v1776164791/OIP_lqphcr.webp')
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.CANDIDATE)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
 
@@ -39,6 +39,7 @@ class Company(BaseModel):
 
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
+    avatar = CloudinaryField(null=False, default='image/upload/v1776164942/OIP_1_pq3xtt.webp')
     tax_code = models.CharField(max_length=255, unique=True)
     description = models.TextField()
     address = models.CharField(max_length=255)
@@ -122,7 +123,6 @@ class Follow(BaseModel):
 
 class Review(BaseModel):
     reviewer = models.ForeignKey(User, on_delete=models.CASCADE)
-    target_user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='reviews_authored')
     target_company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name='reviews_received')
     rating = models.IntegerField()
     comment = models.TextField()

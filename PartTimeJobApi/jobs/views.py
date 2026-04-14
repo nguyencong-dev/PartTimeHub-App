@@ -8,6 +8,7 @@ from jobs.perms import IsEmployer
 from jobs.serializers import ApplicationSerializer
 from django.db.models import Q
 
+
 class JobCategoryViewSet(viewsets.ViewSet, generics.ListAPIView):
     queryset = JobCategory.objects.all()
     serializer_class = serializers.JobCategorySerializer
@@ -16,7 +17,8 @@ class JobCategoryViewSet(viewsets.ViewSet, generics.ListAPIView):
 class JobViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCreateAPIView, generics.DestroyAPIView):
     queryset = Job.objects.filter(is_active=True)
 
-        def get_permissions(self):
+    def get_permissions(self):
+
         if self.action in ['requirements', 'benefits']:
             if self.request.method.__eq__("POST") or self.request.method.__eq__('PATCH') or self.request.method.__eq__(
                     'DELETE'):
@@ -29,10 +31,12 @@ class JobViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCreate
             return [perms.IsCandidate()]
         return [permissions.AllowAny()]
 
+
     def get_serializer_class(self):
         if self.action.__eq__('retrieve'):
             return serializers.JobDetailsSerializer
         return serializers.JobSerializer
+
 
     def get_queryset(self):
         query = self.queryset
@@ -52,6 +56,7 @@ class JobViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCreate
 
         return query
 
+
     def create(self, request):
         if not hasattr(request.user, 'company'):
             return Response({"detail": "Bạn phải tạo hồ sơ Công ty trước khi đăng việc."},
@@ -60,6 +65,7 @@ class JobViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCreate
         s.is_valid(raise_exception=True)
         job = s.save(company=request.user.company)
         return Response(serializers.JobDetailsSerializer(job).data, status=status.HTTP_201_CREATED)
+
 
     @action(methods=['post', 'patch'], url_path='requirements', detail=True)
     def requirements(self, request, pk):
@@ -78,6 +84,7 @@ class JobViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCreate
             s.save()
             return Response(s.data, status=status.HTTP_200_OK)
 
+
     @action(methods=['post', 'patch'], url_path='benefits', detail=True)
     def benefits(self, request, pk):
         job = self.get_object()
@@ -95,8 +102,8 @@ class JobViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCreate
             s.save()
             return Response(s.data, status=status.HTTP_200_OK)
 
-    
-     @action(methods=['post'], detail=True, url_path='apply', parser_classes=[parsers.MultiPartParser])
+
+    @action(methods=['post'], detail=True, url_path='apply', parser_classes=[parsers.MultiPartParser])
     def apply_job(self, request, pk):
         job = self.get_object()
         user = request.user
@@ -133,14 +140,15 @@ class JobViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCreate
 
         return Response(serializers.ApplicationSerializer(apply).data, status=status.HTTP_201_CREATED)
 
+
     @action(methods=['get'], detail=True, url_path='applications')
     def job_applications(self, request, pk):
         job = self.get_object()
         applications = Application.objects.filter(job=job)
         s = serializers.ApplicationSerializer(applications, many=True)
         return Response(s.data, status=status.HTTP_200_OK)
-    
-    
+
+
 class CompanyViewSet(viewsets.ViewSet,
                      generics.ListAPIView,
                      generics.RetrieveAPIView):
@@ -192,7 +200,7 @@ class CompanyViewSet(viewsets.ViewSet,
 
         if user.role != 'CANDIDATE':
             return Response({"detail": "Chỉ ứng viên mới có thể theo dõi công ty."},
-                        status=status.HTTP_403_FORBIDDEN)
+                            status=status.HTTP_403_FORBIDDEN)
 
         follow_obj, created = Follow.objects.get_or_create(user=user, company=company)
 
@@ -200,7 +208,6 @@ class CompanyViewSet(viewsets.ViewSet,
             follow_obj.delete()
             return Response({"detail": "Đã bỏ theo dõi công ty."}, status=status.HTTP_200_OK)
         return Response({"detail": "Đã theo dõi công ty thành công!"}, status=status.HTTP_201_CREATED)
-
 
 
 class CVViewSet(viewsets.ViewSet, generics.ListAPIView):
@@ -239,6 +246,8 @@ class ApplicationViewSet(viewsets.ViewSet, generics.ListAPIView):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False) or not self.request.user.is_authenticated:
+            return self.queryset.none()
         user = self.request.user
         if hasattr(user, 'role') and user.role == 'CANDIDATE':
             return self.queryset.filter(user=user).order_by('-created_at')
@@ -281,6 +290,7 @@ class MessageViewSet(viewsets.ViewSet,
         serializer.save(sender=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+
 class NotificationViewSet(viewsets.ViewSet, generics.ListAPIView):
     queryset = Notification.objects.all()
     serializer_class = serializers.NotificationSerializer
@@ -289,22 +299,37 @@ class NotificationViewSet(viewsets.ViewSet, generics.ListAPIView):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False) or not self.request.user.is_authenticated:
+            return self.queryset.none()
         user = self.request.user
         return self.queryset.filter(user=user).order_by('-created_at')
+
+    def create(self, request, *args, **kwargs):
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        receiver_user = serializer.validated_data.get('user')
+        if receiver_user == request.user:
+            return Response({"detail": "Bạn không thể tự gửi thông báo cho chính mình."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(methods=['patch'], detail=True, url_path='read')
     def read(self, request, pk=None):
         notification = self.get_object()
-
         if notification.user != request.user:
             return Response({"detail": "Không có quyền."},
                             status=status.HTTP_403_FORBIDDEN)
 
-        notification.is_read = True
-        notification.save()
+        serializer = self.get_serializer(notification, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = self.serializer_class(notification)
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class ReviewViewSet(viewsets.ViewSet, generics.ListAPIView):
     queryset = Review.objects.all()
@@ -317,7 +342,7 @@ class ReviewViewSet(viewsets.ViewSet, generics.ListAPIView):
         if user.role != 'CANDIDATE':
             return Response(
                 {
-                   "detail" : "Chỉ tài khoản ứng viên mới có quyền review!"
+                    "detail": "Chỉ tài khoản ứng viên mới có quyền review!"
                 }, status=status.HTTP_403_FORBIDDEN
             )
         target_company = request.data.get('target_company')
