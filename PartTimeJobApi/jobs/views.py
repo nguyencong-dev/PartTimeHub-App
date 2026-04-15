@@ -1,10 +1,8 @@
 from rest_framework import viewsets, generics, filters, status, parsers, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from jobs.models import JobCategory, Job, Requirement, Benefit, Company, Follow, CV, Application, Message, Notification, \
-    Review
+from jobs.models import JobCategory, Job, Requirement, Benefit, Company, Follow, CV, Application, Message, Notification, Review, User
 from jobs import serializers, perms
-from jobs.perms import IsEmployer
 from jobs.serializers import ApplicationSerializer
 from django.db.models import Q
 
@@ -26,7 +24,7 @@ class JobViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCreate
         elif self.action in ['destroy', 'job_applications']:
             return [perms.IsOwnerEmployer()]
         elif self.action == 'create':
-            return [perms.IsEmployer()]
+            return [perms.IsApprovedEmployer()]
         elif self.action in ['apply_job']:
             return [perms.IsCandidate()]
         return [permissions.AllowAny()]
@@ -61,9 +59,9 @@ class JobViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCreate
         if not hasattr(request.user, 'company'):
             return Response({"detail": "Bạn phải tạo hồ sơ Công ty trước khi đăng việc."},
                             status=status.HTTP_400_BAD_REQUEST)
-        s = serializers.JobSerializer(data=request.data)
+        s = serializers.JobSerializer(data=request.data, context={'request': request})
         s.is_valid(raise_exception=True)
-        job = s.save(company=request.user.company)
+        job = s.save()
         return Response(serializers.JobDetailsSerializer(job).data, status=status.HTTP_201_CREATED)
 
 
@@ -151,23 +149,29 @@ class JobViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCreate
 
 class CompanyViewSet(viewsets.ViewSet,
                      generics.ListAPIView,
-                     generics.RetrieveAPIView):
+                     generics.RetrieveAPIView, generics.CreateAPIView):
     queryset = Company.objects.all()
 
     def get_serializer_class(self):
-        if self.action == 'list':
+        if self.action == 'list' or self.action.__eq__("create"):
             return serializers.CompanySerializer
         return serializers.CompanyDetailSerializer
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             return [permissions.AllowAny()]
-        if self.action == 'verification':
+        if self.action == 'verification' or self.action.__eq__("create"):
             return [perms.IsEmployer()]
         if self.action == 'follow':
             return [permissions.IsAuthenticated()]
 
         return [permissions.AllowAny()]
+
+    def create(self, request):
+        s = serializers.CompanySerializer(data=request.data, context={'request': request})
+        s.is_valid(raise_exception=True)
+        company = s.save()
+        return Response(serializers.CompanySerializer(company).data, status=status.HTTP_201_CREATED)
 
     @action(methods=['post'], detail=False, url_path='verification')
     def verification(self, request):
@@ -358,3 +362,18 @@ class ReviewViewSet(viewsets.ViewSet, generics.ListAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save(reviewer=user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class UserViewSet(viewsets.ViewSet, generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = serializers.UserSerializer
+    parser_classes = [parsers.MultiPartParser]
+
+    @action(methods=['get', 'patch'], url_path='current-user', detail=False, permission_classes=[permissions.IsAuthenticated])
+    def current_user(self, request):
+        u = request.user
+        if request.method.__eq__('PATCH'):
+            s = serializers.SimpleUserSerializer(u, data=request.data)
+            s.is_valid(raise_exception=True)
+            u = s.save()
+
+        return Response(serializers.UserSerializer(u).data, status=status.HTTP_200_OK)

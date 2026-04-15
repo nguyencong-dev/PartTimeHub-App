@@ -18,14 +18,8 @@ class User(AbstractUser):
         EMPLOYER = 'EMPLOYER',
         CANDIDATE = 'CANDIDATE',
 
-    class Status(models.TextChoices):
-        PENDING = 'PENDING',
-        ACTIVE = 'ACTIVE',
-        BLOCKED = 'BLOCKED',
-
     avatar = CloudinaryField(null=False, default='image/upload/v1776164791/OIP_lqphcr.webp')
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.CANDIDATE)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
 
     def __str__(self):
         return self.username
