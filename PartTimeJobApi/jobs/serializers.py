@@ -32,7 +32,7 @@ class ItemSerializer(serializers.ModelSerializer):
 class CompanySerializer(ItemSerializer):
     class Meta:
         model = Company
-        fields = ['id', 'name', 'address', 'avatar', 'description', "tax_code"]
+        fields = ['id', 'name', 'address', 'avatar', 'description', 'tax_code', 'status']
 
         extra_kwargs = {
             'description': {
@@ -41,6 +41,9 @@ class CompanySerializer(ItemSerializer):
             'tax_code': {
                 'write_only': True
             },
+            'status': {
+                'read_only': True
+            }
         }
 
     def create(self, validated_data):

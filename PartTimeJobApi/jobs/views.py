@@ -1,7 +1,8 @@
 from rest_framework import viewsets, generics, filters, status, parsers, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from jobs.models import JobCategory, Job, Requirement, Benefit, Company, Follow, CV, Application, Message, Notification, Review, User
+from jobs.models import JobCategory, Job, Requirement, Benefit, Company, Follow, CV, Application, Message, Notification, \
+    Review, User, CompanyImage
 from jobs import serializers, perms
 from jobs.serializers import ApplicationSerializer
 from django.db.models import Q
@@ -164,6 +165,8 @@ class CompanyViewSet(viewsets.ViewSet,
             return [perms.IsEmployer()]
         if self.action == 'follow':
             return [permissions.IsAuthenticated()]
+        if self.action.__eq__("change_status_company"):
+            return [perms.IsAdmin()]
 
         return [permissions.AllowAny()]
 
@@ -213,6 +216,50 @@ class CompanyViewSet(viewsets.ViewSet,
             return Response({"detail": "Đã bỏ theo dõi công ty."}, status=status.HTTP_200_OK)
         return Response({"detail": "Đã theo dõi công ty thành công!"}, status=status.HTTP_201_CREATED)
 
+    @action(methods=['post', 'delete'], detail=True, url_path='images')
+    def images(self, request, pk=None):
+        company = self.get_object()
+        user = request.user
+
+        if not (user.is_authenticated and user.role == 'EMPLOYER' and company.user == user):
+            return Response(
+                {"detail": "Bạn không có quyền chỉnh sửa hình ảnh cho công ty này."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if request.method.__eq__('POST'):
+            image_file = request.FILES.get('image')
+            if not image_file:
+                return Response({"detail": "Không tìm thấy tệp ảnh (key: 'image')."},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            new_image = CompanyImage.objects.create(company=company, image=image_file)
+            return Response({
+                "id": new_image.pk,
+                "image_url": new_image.image.url
+            }, status=status.HTTP_201_CREATED)
+
+        if request.method.__eq__('DELETE'):
+            image_id = request.data.get('image_id')
+            if not image_id:
+                return Response({"detail": "Cần cung cấp 'image_id' để xóa."},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            image_to_delete = CompanyImage.objects.filter(id=image_id, company=company).first()
+            if image_to_delete:
+                image_to_delete.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+
+            return Response({"detail": "Không tìm thấy ảnh hoặc ảnh không thuộc công ty này."},
+                            status=status.HTTP_404_NOT_FOUND)
+
+    @action(methods=['patch'], detail=True, url_path='status')
+    def change_status_company(self, request, pk):
+        company = self.get_object()
+        new_status = request.data.get('status')
+        company.status = new_status
+        company.save()
+        return Response(serializers.CompanySerializer(company).data,status=status.HTTP_200_OK)
 
 class CVViewSet(viewsets.ViewSet, generics.ListAPIView):
     queryset = CV.objects.filter(is_active=True)
