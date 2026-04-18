@@ -24,7 +24,7 @@ class JobViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCreate
                 return [perms.IsOwnerEmployer()]
         elif self.action in ['destroy', 'job_applications']:
             return [perms.IsOwnerEmployer()]
-        elif self.action == 'create':
+        elif self.action in ['create']:
             return [perms.IsApprovedEmployer()]
         elif self.action in ['apply_job']:
             return [perms.IsCandidate()]
@@ -161,9 +161,9 @@ class CompanyViewSet(viewsets.ViewSet,
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             return [permissions.AllowAny()]
-        if self.action == 'verification' or self.action.__eq__("create"):
+        if self.action in ['verification'] or self.action.__eq__("create"):
             return [perms.IsEmployer()]
-        if self.action == 'follow':
+        if self.action in ['follow']:
             return [permissions.IsAuthenticated()]
         if self.action.__eq__("change_status_company"):
             return [perms.IsAdmin()]
@@ -221,7 +221,7 @@ class CompanyViewSet(viewsets.ViewSet,
         company = self.get_object()
         user = request.user
 
-        if request.method == 'GET' and user.is_authenticated:
+        if request.method.__eq__('GET') and user.is_authenticated:
             images = CompanyImage.objects.filter(company=company)
             serializer = CompanyImageSerializer(images, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
