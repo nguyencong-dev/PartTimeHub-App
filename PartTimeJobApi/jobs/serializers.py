@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from jobs.models import JobCategory, Job, Requirement, Benefit, Company, CV, Application, Message, Notification, Review, \
-    User
+    User, CompanyImage
 
 
 class JobCategorySerializer(serializers.ModelSerializer):
@@ -162,3 +162,14 @@ class UserSerializer(SimpleUserSerializer):
         user.save()
 
         return user
+
+class CompanyImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompanyImage
+        fields = ['id','company', 'image']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.image:
+            data['image'] = instance.image.url
+        return data

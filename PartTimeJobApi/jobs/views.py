@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from jobs.models import JobCategory, Job, Requirement, Benefit, Company, Follow, CV, Application, Message, Notification, \
     Review, User, CompanyImage
 from jobs import serializers, perms
-from jobs.serializers import ApplicationSerializer
+from jobs.serializers import ApplicationSerializer, CompanyImageSerializer
 from django.db.models import Q
 
 
@@ -216,10 +216,15 @@ class CompanyViewSet(viewsets.ViewSet,
             return Response({"detail": "Đã bỏ theo dõi công ty."}, status=status.HTTP_200_OK)
         return Response({"detail": "Đã theo dõi công ty thành công!"}, status=status.HTTP_201_CREATED)
 
-    @action(methods=['post', 'delete'], detail=True, url_path='images')
+    @action(methods=['post', 'delete', 'get'], detail=True, url_path='images')
     def images(self, request, pk=None):
         company = self.get_object()
         user = request.user
+
+        if request.method == 'GET' and user.is_authenticated:
+            images = CompanyImage.objects.filter(company=company)
+            serializer = CompanyImageSerializer(images, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
         if not (user.is_authenticated and user.role == 'EMPLOYER' and company.user == user):
             return Response(
@@ -233,11 +238,10 @@ class CompanyViewSet(viewsets.ViewSet,
                 return Response({"detail": "Không tìm thấy tệp ảnh (key: 'image')."},
                                 status=status.HTTP_400_BAD_REQUEST)
 
-            new_image = CompanyImage.objects.create(company=company, image=image_file)
-            return Response({
-                "id": new_image.pk,
-                "image_url": new_image.image.url
-            }, status=status.HTTP_201_CREATED)
+            serializer = CompanyImageSerializer(data={'company': company.id,'image': image_file})
+            serializer.is_valid()
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         if request.method.__eq__('DELETE'):
             image_id = request.data.get('image_id')
