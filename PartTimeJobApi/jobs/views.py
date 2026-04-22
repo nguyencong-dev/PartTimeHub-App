@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from jobs.models import JobCategory, Job, Requirement, Benefit, Company, Follow, CV, Application, Message, Notification, \
     Review, User, CompanyImage
-from jobs import serializers, perms
+from jobs import serializers, perms, paginators
 from jobs.serializers import ApplicationSerializer, CompanyImageSerializer
 from django.db.models import Q
 
@@ -14,8 +14,8 @@ class JobCategoryViewSet(viewsets.ViewSet, generics.ListAPIView):
 
 
 class JobViewSet(viewsets.ViewSet, generics.RetrieveAPIView, generics.ListCreateAPIView, generics.DestroyAPIView):
-    queryset = Job.objects.filter(is_active=True)
-
+    queryset = Job.objects.filter(is_active=True).select_related('company')
+    pagination_class = paginators.JobPaginator
     def get_permissions(self):
 
         if self.action in ['requirements', 'benefits']:

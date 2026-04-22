@@ -51,8 +51,13 @@ class CompanySerializer(ItemSerializer):
         validated_data['user'] = request.user
         return super().create(validated_data)
 
+class SimpleCompanySerializer(ItemSerializer):
+    class Meta:
+        model = Company
+        fields = ['id', 'name', 'avatar', 'address']
 
 class JobSerializer(serializers.ModelSerializer):
+    company = SimpleCompanySerializer(read_only=True)
     class Meta:
         model = Job
         fields = ['id', 'title', 'description', 'salary', 'working_time', 'location', 'category', 'company']
@@ -67,6 +72,7 @@ class JobSerializer(serializers.ModelSerializer):
 class JobDetailsSerializer(serializers.ModelSerializer):
     requirements = RequirementSerializer(many=True, read_only=True)
     benefits = BenefitSerializer(many=True, read_only=True)
+    company = SimpleCompanySerializer(read_only=True)
 
     class Meta:
         model = JobSerializer.Meta.model
